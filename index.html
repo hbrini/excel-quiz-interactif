@@ -4,17 +4,453 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Excel Interactif</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide-react/0.263.1/lucide-react.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        }
+        .hidden { display: none; }
+        .slide-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel" src="quiz.js"></script>
+    <div id="quiz-container" class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <!-- Quiz Content -->
+        <div id="quiz-card" class="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full slide-enter">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Excel Quiz</div>
+                    <div id="question-counter" class="text-gray-500">Question 1 / 10</div>
+                </div>
+                <div class="w-64 bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 10%"></div>
+                </div>
+            </div>
+
+            <!-- Question Section -->
+            <div class="mb-8">
+                <div id="question-title" class="text-sm text-blue-600 font-medium mb-2">Formules de base</div>
+                <h2 id="question-text" class="text-2xl font-bold text-gray-800 mb-6">
+                    Quelle formule renvoie la plus grande valeur d'une plage de cellules ?
+                </h2>
+            </div>
+
+            <!-- Options -->
+            <div id="options-container" class="space-y-4 mb-8">
+                <!-- Options will be populated by JavaScript -->
+            </div>
+
+            <!-- Result Message -->
+            <div id="result-message" class="hidden p-4 rounded-lg mb-8">
+                <div class="flex items-center space-x-2">
+                    <span id="result-icon"></span>
+                    <span id="result-text" class="font-medium"></span>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between items-center">
+                <button id="prev-btn" class="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>Précédent</span>
+                </button>
+
+                <div class="flex space-x-4">
+                    <button id="submit-btn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed">
+                        Valider
+                    </button>
+                    <button id="next-btn" class="hidden flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                        <span>Suivant</span>
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full text-center">
+            <div class="mb-6">
+                <div class="mx-auto h-16 w-16 bg-yellow-500 rounded-full flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Quiz terminé !</h1>
+                <div id="final-score" class="text-6xl font-bold text-blue-600 mb-2">0%</div>
+                <p id="final-message" class="text-lg text-gray-600"></p>
+            </div>
+            
+            <div class="mb-8">
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="final-progress" class="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <button id="restart-btn" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors mx-auto">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <span>Recommencer</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Quiz Data
+        const questions = [
+            {
+                id: 1,
+                title: "Formules de base",
+                question: "Quelle formule renvoie la plus grande valeur d'une plage de cellules ?",
+                options: [
+                    { id: 'A', text: '=SOMME()' },
+                    { id: 'B', text: '=MOYENNE()' },
+                    { id: 'C', text: '=MAX()' },
+                    { id: 'D', text: '=NB()' }
+                ],
+                correct: 'C'
+            },
+            {
+                id: 2,
+                title: "Moyenne bonus",
+                question: "La formule =MOYENNE(A1:A5) calcule :",
+                options: [
+                    { id: 'A', text: 'La somme d\'A1 à A5' },
+                    { id: 'B', text: 'Le nombre de cellules non vides' },
+                    { id: 'C', text: 'La moyenne des valeurs de A1 à A5' },
+                    { id: 'D', text: 'Rien, elle renvoie une erreur' }
+                ],
+                correct: 'C'
+            },
+            {
+                id: 3,
+                title: "Autoremplissage",
+                question: "Que se passe-t-il si tu fais un double-clic sur la poignée de recopie d'une cellule avec une formule ?",
+                options: [
+                    { id: 'A', text: 'Rien ne se passe' },
+                    { id: 'B', text: 'La formule est copiée vers le bas jusqu\'à la dernière ligne de la colonne adjacente' },
+                    { id: 'C', text: 'Excel insère la date du jour' },
+                    { id: 'D', text: 'Excel remplace la formule par des valeurs' }
+                ],
+                correct: 'B'
+            },
+            {
+                id: 4,
+                title: "Listes personnalisées",
+                question: "À quoi servent les listes personnalisées dans Excel ?",
+                options: [
+                    { id: 'A', text: 'À créer des raccourcis clavier' },
+                    { id: 'B', text: 'À remplir automatiquement des séries spécifiques (ex. : équipes, services)' },
+                    { id: 'C', text: 'À faire des calculs automatiques' },
+                    { id: 'D', text: 'À trier les données numériques' }
+                ],
+                correct: 'B'
+            },
+            {
+                id: 5,
+                title: "Références absolues",
+                question: "Dans la formule =$A1+B1, laquelle de ces affirmations est vraie ?",
+                options: [
+                    { id: 'A', text: 'La colonne A est figée' },
+                    { id: 'B', text: 'La ligne 1 est figée' },
+                    { id: 'C', text: 'Rien n\'est figé' },
+                    { id: 'D', text: 'La cellule entière est figée' }
+                ],
+                correct: 'A'
+            },
+            {
+                id: 6,
+                title: "Raccourci magique",
+                question: "Quel est le raccourci clavier pour faire basculer entre les types de références ($) ?",
+                options: [
+                    { id: 'A', text: 'Ctrl + $' },
+                    { id: 'B', text: 'Alt + 4' },
+                    { id: 'C', text: 'F4' },
+                    { id: 'D', text: 'Shift + Entrée' }
+                ],
+                correct: 'C'
+            },
+            {
+                id: 7,
+                title: "Formule SI",
+                question: "Que renvoie cette formule =SI(A1>10;\"OK\";\"Non\") si A1 = 12 ?",
+                options: [
+                    { id: 'A', text: 'OK' },
+                    { id: 'B', text: 'Non' },
+                    { id: 'C', text: 'VRAI' },
+                    { id: 'D', text: 'Faux' }
+                ],
+                correct: 'A'
+            },
+            {
+                id: 8,
+                title: "NB.SI",
+                question: "La formule =NB.SI(A1:A10;\">5\") permet de :",
+                options: [
+                    { id: 'A', text: 'Compter les cellules contenant le chiffre 5' },
+                    { id: 'B', text: 'Compter les cellules vides' },
+                    { id: 'C', text: 'Compter les cellules supérieures à 5' },
+                    { id: 'D', text: 'Compter les formules' }
+                ],
+                correct: 'C'
+            },
+            {
+                id: 9,
+                title: "CONCATENER vs JOINDRE.TEXTE",
+                question: "Quelle formule est la plus pratique pour combiner plusieurs textes avec un séparateur ?",
+                options: [
+                    { id: 'A', text: '=JOINDRE.TEXTE(\", \"; VRAI; A1:A3)' },
+                    { id: 'B', text: '=CONCATENER(A1;A2;A3)' },
+                    { id: 'C', text: '=SOMME(A1:A3)' },
+                    { id: 'D', text: '=NB(A1:A3)' }
+                ],
+                correct: 'A'
+            },
+            {
+                id: 10,
+                title: "Piège classique",
+                question: "Pourquoi la formule =A1+B1 peut donner un mauvais résultat après un autoremplissage vers le bas ?",
+                options: [
+                    { id: 'A', text: 'Parce que la poignée ne fonctionne pas' },
+                    { id: 'B', text: 'Parce que les cellules ne sont pas vides' },
+                    { id: 'C', text: 'Parce que la ligne de la formule ne suit pas' },
+                    { id: 'D', text: 'Parce que la colonne adjacente est vide (donc le remplissage s\'arrête)' }
+                ],
+                correct: 'D'
+            }
+        ];
+
+        // Quiz State
+        let currentQuestion = 0;
+        let selectedAnswer = null;
+        let showResult = false;
+        let answers = {};
+        let quizCompleted = false;
+
+        // DOM Elements
+        const questionCounter = document.getElementById('question-counter');
+        const progressBar = document.getElementById('progress-bar');
+        const questionTitle = document.getElementById('question-title');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const resultMessage = document.getElementById('result-message');
+        const resultIcon = document.getElementById('result-icon');
+        const resultText = document.getElementById('result-text');
+        const prevBtn = document.getElementById('prev-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const quizCard = document.getElementById('quiz-card');
+        const resultsScreen = document.getElementById('results-screen');
+        const finalScore = document.getElementById('final-score');
+        const finalMessage = document.getElementById('final-message');
+        const finalProgress = document.getElementById('final-progress');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Initialize Quiz
+        function initQuiz() {
+            renderQuestion();
+            updateNavigation();
+        }
+
+        // Render Current Question
+        function renderQuestion() {
+            const question = questions[currentQuestion];
+            
+            questionCounter.textContent = `Question ${currentQuestion + 1} / ${questions.length}`;
+            progressBar.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+            questionTitle.textContent = question.title;
+            questionText.textContent = question.question;
+            
+            // Clear previous options
+            optionsContainer.innerHTML = '';
+            
+            // Create options
+            question.options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 border-gray-200 hover:border-blue-300 hover:bg-blue-50';
+                button.onclick = () => selectAnswer(option.id);
+                
+                button.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="font-bold text-lg">${option.id}.</span>
+                            <span class="font-medium">${option.text}</span>
+                        </div>
+                    </div>
+                `;
+                
+                optionsContainer.appendChild(button);
+            });
+            
+            // Reset state
+            selectedAnswer = answers[currentQuestion] || null;
+            showResult = !!answers[currentQuestion];
+            
+            updateAnswerDisplay();
+            hideResultMessage();
+        }
+
+        // Select Answer
+        function selectAnswer(optionId) {
+            if (showResult) return;
+            selectedAnswer = optionId;
+            updateAnswerDisplay();
+            updateNavigation();
+        }
+
+        // Update Answer Display
+        function updateAnswerDisplay() {
+            const question = questions[currentQuestion];
+            const buttons = optionsContainer.querySelectorAll('button');
+            
+            buttons.forEach((button, index) => {
+                const option = question.options[index];
+                let buttonClass = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ';
+                
+                if (showResult) {
+                    if (option.id === question.correct) {
+                        buttonClass += 'border-green-500 bg-green-50 text-green-700';
+                    } else if (option.id === selectedAnswer && option.id !== question.correct) {
+                        buttonClass += 'border-red-500 bg-red-50 text-red-700';
+                    } else {
+                        buttonClass += 'border-gray-200 bg-gray-50 text-gray-500';
+                    }
+                } else {
+                    if (selectedAnswer === option.id) {
+                        buttonClass += 'border-blue-500 bg-blue-50 text-blue-700';
+                    } else {
+                        buttonClass += 'border-gray-200 hover:border-blue-300 hover:bg-blue-50';
+                    }
+                }
+                
+                button.className = buttonClass;
+            });
+        }
+
+        // Submit Answer
+        function submitAnswer() {
+            if (!selectedAnswer) return;
+            
+            answers[currentQuestion] = selectedAnswer;
+            showResult = true;
+            
+            const question = questions[currentQuestion];
+            const isCorrect = selectedAnswer === question.correct;
+            
+            // Show result message
+            resultMessage.className = `p-4 rounded-lg mb-8 ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`;
+            resultMessage.classList.remove('hidden');
+            
+            resultIcon.innerHTML = isCorrect ? '✅' : '❌';
+            resultText.textContent = isCorrect ? 'Correct !' : `Incorrect. La bonne réponse est ${question.correct}.`;
+            resultText.className = `font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`;
+            
+            updateAnswerDisplay();
+            updateNavigation();
+        }
+
+        // Hide Result Message
+        function hideResultMessage() {
+            resultMessage.classList.add('hidden');
+        }
+
+        // Next Question
+        function nextQuestion() {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+                updateNavigation();
+            } else {
+                showResults();
+            }
+        }
+
+        // Previous Question
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+                updateNavigation();
+            }
+        }
+
+        // Update Navigation
+        function updateNavigation() {
+            prevBtn.disabled = currentQuestion === 0;
+            
+            if (showResult) {
+                submitBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+                nextBtn.querySelector('span').textContent = currentQuestion === questions.length - 1 ? 'Voir les résultats' : 'Suivant';
+            } else {
+                submitBtn.classList.remove('hidden');
+                nextBtn.classList.add('hidden');
+                submitBtn.disabled = !selectedAnswer;
+            }
+        }
+
+        // Show Results
+        function showResults() {
+            const score = getScore();
+            const percentage = getScorePercentage();
+            
+            quizCard.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            finalScore.textContent = `${percentage}%`;
+            finalMessage.textContent = `Vous avez obtenu ${score} sur ${questions.length} bonnes réponses`;
+            
+            // Animate progress bar
+            setTimeout(() => {
+                finalProgress.style.width = `${percentage}%`;
+            }, 500);
+        }
+
+        // Get Score
+        function getScore() {
+            return Object.keys(answers).reduce((score, questionIndex) => {
+                return score + (answers[questionIndex] === questions[questionIndex].correct ? 1 : 0);
+            }, 0);
+        }
+
+        // Get Score Percentage
+        function getScorePercentage() {
+            return Math.round((getScore() / questions.length) * 100);
+        }
+
+        // Restart Quiz
+        function restartQuiz() {
+            currentQuestion = 0;
+            selectedAnswer = null;
+            showResult = false;
+            answers = {};
+            quizCompleted = false;
+            
+            resultsScreen.classList.add('hidden');
+            quizCard.classList.remove('hidden');
+            
+            initQuiz();
+        }
+
+        // Event Listeners
+        prevBtn.onclick = previousQuestion;
+        submitBtn.onclick = submitAnswer;
+        nextBtn.onclick = nextQuestion;
+        restartBtn.onclick = restartQuiz;
+
+        // Initialize Quiz on Load
+        initQuiz();
+    </script>
 </body>
 </html>
